@@ -212,7 +212,8 @@ static void wdm_in_callback(struct urb *urb)
 		/* we may already be in overflow */
 		if (!test_bit(WDM_OVERFLOW, &desc->flags)) {
 			memmove(desc->ubuf + desc->length, desc->inbuf, length);
-			desc->length += length;
+			smp_wmb(); /* against wdm_read() */
+			WRITE_ONCE(desc->length, desc->length + length);
 		}
 	}
 skip_error:
@@ -519,6 +520,7 @@ static ssize_t wdm_read
 		return -ERESTARTSYS;
 
 	cntr = READ_ONCE(desc->length);
+	smp_rmb(); /* against wdm_in_callback() */
 	if (cntr == 0) {
 		desc->read = 0;
 retry:
@@ -790,7 +792,7 @@ static const struct file_operations wdm_fops = {
 	.release =	wdm_release,
 	.poll =		wdm_poll,
 	.unlocked_ioctl = wdm_ioctl,
-	.compat_ioctl = wdm_ioctl,
+	.compat_ioctl = compat_ptr_ioctl,
 	.llseek =	noop_llseek,
 };
 

@@ -257,11 +257,6 @@ rmnet_perf_config_register_callbacks(struct net_device *dev,
 				&rmnet_perf_core_handle_map_control_start_v2;
 			dl_ind->dl_trl_handler_v2 =
 				&rmnet_perf_core_handle_map_control_end_v2;
-		} else {
-			dl_ind->dl_hdr_handler =
-				&rmnet_perf_core_handle_map_control_start;
-			dl_ind->dl_trl_handler =
-				&rmnet_perf_core_handle_map_control_end;
 		}
 
 		if (rmnet_map_dl_ind_register(port, dl_ind)) {
@@ -460,13 +455,13 @@ static struct notifier_block rmnet_perf_dev_notifier __read_mostly = {
 	.priority = 1,
 };
 
-int __init rmnet_perf_init(void)
+static int __init rmnet_perf_init(void)
 {
 	pr_info("%s(): initializing rmnet_perf\n", __func__);
 	return register_netdevice_notifier(&rmnet_perf_dev_notifier);
 }
 
-void __exit rmnet_perf_exit(void)
+static void __exit rmnet_perf_exit(void)
 {
 	pr_info("%s(): exiting rmnet_perf\n", __func__);
 	unregister_netdevice_notifier(&rmnet_perf_dev_notifier);

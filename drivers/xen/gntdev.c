@@ -599,26 +599,26 @@ static int unmap_if_in_range(struct gntdev_grant_map *map,
 }
 
 static int mn_invl_range_start(struct mmu_notifier *mn,
-				struct mm_struct *mm,
-				unsigned long start, unsigned long end,
-				bool blockable)
+			       const struct mmu_notifier_range *range)
 {
 	struct gntdev_priv *priv = container_of(mn, struct gntdev_priv, mn);
 	struct gntdev_grant_map *map;
 	int ret = 0;
 
-	if (blockable)
+	if (range->blockable)
 		mutex_lock(&priv->lock);
 	else if (!mutex_trylock(&priv->lock))
 		return -EAGAIN;
 
 	list_for_each_entry(map, &priv->maps, next) {
-		ret = unmap_if_in_range(map, start, end, blockable);
+		ret = unmap_if_in_range(map, range->start, range->end,
+					range->blockable);
 		if (ret)
 			goto out_unlock;
 	}
 	list_for_each_entry(map, &priv->freeable_maps, next) {
-		ret = unmap_if_in_range(map, start, end, blockable);
+		ret = unmap_if_in_range(map, range->start, range->end,
+					range->blockable);
 		if (ret)
 			goto out_unlock;
 	}
@@ -778,11 +778,15 @@ static long gntdev_ioctl_map_grant_ref(struct gntdev_priv *priv,
 	mutex_lock(&priv->lock);
 	gntdev_add_map(priv, map);
 	op.index = map->index << PAGE_SHIFT;
-	mutex_unlock(&priv->lock);
 
-	if (copy_to_user(u, &op, sizeof(op)) != 0)
+	if (copy_to_user(u, &op, sizeof(op)) != 0) {
+		list_del(&map->next);
+		mutex_unlock(&priv->lock);
+		gntdev_put_map(NULL /* already removed */, map);
 		return -EFAULT;
+	}
 
+	mutex_unlock(&priv->lock);
 	return 0;
 }
 

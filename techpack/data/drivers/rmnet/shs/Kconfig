@@ -6,5 +6,5 @@ config RMNET_SHS
 	tristate "Rmnet SHS driver"
 	default y
 	depends on RMNET
-	---help---
+	help
 	  performance mode of rmnet driver
